@@ -3,13 +3,15 @@
     <!-- Header -->
     <div class="row mb-4">
       <div class="col-12">
-        <h1 class="h2 mb-1">
-          <i class="fas fa-tachometer-alt me-2 text-primary"></i>
-          Dashboard de Pagamentos
-        </h1>
-        <p class="text-muted mb-2">Visão geral dos pagamentos mensais</p>
-        <div v-if="paymentSummary" class="text-muted">
-          <small><i class="fas fa-calendar me-1"></i> Mês atual: {{ paymentSummary.mes_atual }}</small>
+        <div class="d-flex flex-column">
+          <h1 class="h2 mb-1">
+            <i class="fas fa-tachometer-alt me-2 text-primary"></i>
+            Dashboard de Pagamentos
+          </h1>
+          <p class="text-muted mb-2 ms-4">Visão geral dos pagamentos mensais</p>
+          <div v-if="paymentSummary" class="text-muted ms-4">
+            <small><i class="fas fa-calendar me-1"></i> Mês atual: {{ paymentSummary.mes_atual }}</small>
+          </div>
         </div>
       </div>
     </div>
