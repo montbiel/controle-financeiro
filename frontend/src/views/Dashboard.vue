@@ -3,13 +3,13 @@
     <!-- Header -->
     <div class="row mb-4">
       <div class="col-12">
-        <div class="d-flex flex-column">
+        <div class="header-container">
           <h1 class="h2 mb-1">
             <i class="fas fa-tachometer-alt me-2 text-primary"></i>
             Dashboard de Pagamentos
           </h1>
-          <p class="text-muted mb-2 ms-4">Visão geral dos pagamentos mensais</p>
-          <div v-if="paymentSummary" class="text-muted ms-4">
+          <p class="text-muted mb-2 subtitle">Visão geral dos pagamentos mensais</p>
+          <div v-if="paymentSummary" class="text-muted current-month">
             <small><i class="fas fa-calendar me-1"></i> Mês atual: {{ paymentSummary.mes_atual }}</small>
           </div>
         </div>
@@ -488,5 +488,20 @@ export default {
 .spinner-border {
   width: 3rem;
   height: 3rem;
+}
+
+/* Alinhamento do header */
+.header-container {
+  position: relative;
+}
+
+.subtitle {
+  margin-left: 0 !important;
+  padding-left: 0.5rem !important;
+}
+
+.current-month {
+  margin-left: 0 !important;
+  padding-left: 0.3rem !important;
 }
 </style>
