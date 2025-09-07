@@ -147,7 +147,7 @@
                             class="form-check-input" 
                             type="checkbox" 
                             :id="`pago_gabriel_${item.id}`"
-                            :checked="item.pago_pessoa1"
+                            :checked="isPaidThisMonth(item, 1)"
                             @change="togglePayment(item.id, 1, $event.target.checked)"
                           >
                           <label class="form-check-label" :for="`pago_gabriel_${item.id}`">
@@ -214,7 +214,7 @@
                             class="form-check-input" 
                             type="checkbox" 
                             :id="`pago_juliana_${item.id}`"
-                            :checked="item.pago_pessoa2"
+                            :checked="isPaidThisMonth(item, 2)"
                             @change="togglePayment(item.id, 2, $event.target.checked)"
                           >
                           <label class="form-check-label" :for="`pago_juliana_${item.id}`">
@@ -439,6 +439,17 @@ export default {
       })
     },
     getPersonMonthlyValue(item, personNumber) {
+      // Se tem parcelas mensais, usa a lógica nova
+      if (item.parcelas_mensais && item.parcelas_mensais.length > 0) {
+        const currentMonth = this.getCurrentMonth()
+        const currentInstallment = item.parcelas_mensais.find(p => p.mes === currentMonth)
+        if (currentInstallment) {
+          return personNumber === 1 ? currentInstallment.valor_pessoa1 : currentInstallment.valor_pessoa2
+        }
+        return 0
+      }
+      
+      // Lógica antiga (compatibilidade)
       if (item.conta_fixa) {
         return personNumber === 1 ? item.valor_manual_pessoa1 : item.valor_manual_pessoa2
       } else {
@@ -446,16 +457,67 @@ export default {
         return (item.valor * percentual / 100) / item.parcelas
       }
     },
+    getCurrentMonth() {
+      const now = new Date()
+      const month = String(now.getMonth() + 1).padStart(2, '0')
+      const year = now.getFullYear()
+      return `${month}/${year}`
+    },
+    isPaidThisMonth(item, personNumber) {
+      // Se tem parcelas mensais, usa a lógica nova
+      if (item.parcelas_mensais && item.parcelas_mensais.length > 0) {
+        const currentMonth = this.getCurrentMonth()
+        const currentInstallment = item.parcelas_mensais.find(p => p.mes === currentMonth)
+        if (currentInstallment) {
+          return personNumber === 1 ? currentInstallment.pago_pessoa1 : currentInstallment.pago_pessoa2
+        }
+        return false
+      }
+      
+      // Lógica antiga (compatibilidade)
+      return personNumber === 1 ? item.pago_pessoa1 : item.pago_pessoa2
+    },
     async togglePayment(itemId, personNumber, isPaid) {
       try {
-        const updateData = {}
-        if (personNumber === 1) {
-          updateData.pago_pessoa1 = isPaid
+        // Busca o item para verificar se tem parcelas mensais
+        const item = this.paymentSummary?.itens?.find(i => i.id === itemId)
+        
+        if (item && item.parcelas_mensais && item.parcelas_mensais.length > 0) {
+          // Nova lógica com parcelas mensais
+          const currentMonth = this.getCurrentMonth()
+          const pessoa = personNumber === 1 ? 'pessoa1' : 'pessoa2'
+          
+          if (isPaid) {
+            // Marca como pago usando o novo endpoint
+            await paymentService.markInstallmentPaid(itemId, currentMonth, pessoa)
+          } else {
+            // Para desmarcar, atualiza a parcela específica
+            const parcelasAtualizadas = item.parcelas_mensais.map(p => {
+              if (p.mes === currentMonth) {
+                return {
+                  ...p,
+                  [`pago_${pessoa}`]: false
+                }
+              }
+              return p
+            })
+            
+            await paymentService.updateItem(itemId, {
+              parcelas_mensais: parcelasAtualizadas
+            })
+          }
         } else {
-          updateData.pago_pessoa2 = isPaid
+          // Lógica antiga (compatibilidade)
+          const updateData = {}
+          if (personNumber === 1) {
+            updateData.pago_pessoa1 = isPaid
+          } else {
+            updateData.pago_pessoa2 = isPaid
+          }
+          
+          await paymentService.updateItem(itemId, updateData)
         }
         
-        await paymentService.updateItem(itemId, updateData)
         await this.loadData() // Recarrega os dados
       } catch (error) {
         console.error('Erro ao atualizar status de pagamento:', error)

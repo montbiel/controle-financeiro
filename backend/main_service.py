@@ -96,6 +96,20 @@ async def get_payment_items(manager: GoogleSheetsServiceManager = Depends(get_sh
         payment_items = []
         
         for item in items:
+            # Converte parcelas mensais se existirem
+            parcelas_mensais = None
+            if item.get('parcelas_mensais'):
+                from models import PaymentInstallment
+                parcelas_mensais = [
+                    PaymentInstallment(
+                        mes=p['mes'],
+                        valor_pessoa1=p['valor_pessoa1'],
+                        valor_pessoa2=p['valor_pessoa2'],
+                        pago_pessoa1=p.get('pago_pessoa1', False),
+                        pago_pessoa2=p.get('pago_pessoa2', False)
+                    ) for p in item['parcelas_mensais']
+                ]
+            
             payment_item = PaymentItem(
                 id=item['id'],
                 nome=item['nome'],
@@ -104,7 +118,14 @@ async def get_payment_items(manager: GoogleSheetsServiceManager = Depends(get_sh
                 percentual_pessoa1=item['percentual_pessoa1'],
                 percentual_pessoa2=item['percentual_pessoa2'],
                 data_criacao=item.get('data_criacao', ''),
-                ativo=item.get('ativo', True)
+                ativo=item.get('ativo', True),
+                conta_fixa=item.get('conta_fixa', False),
+                valor_manual_pessoa1=item.get('valor_manual_pessoa1'),
+                valor_manual_pessoa2=item.get('valor_manual_pessoa2'),
+                pago_pessoa1=item.get('pago_pessoa1', False),
+                pago_pessoa2=item.get('pago_pessoa2', False),
+                parcelas_mensais=parcelas_mensais,
+                comecar_mes_atual=item.get('comecar_mes_atual', True)
             )
             payment_items.append(payment_item)
         
@@ -136,6 +157,30 @@ async def create_payment_item(
         if item.parcelas <= 0:
             raise HTTPException(status_code=400, detail="O número de parcelas deve ser maior que zero")
         
+        # Gera as parcelas mensais
+        from utils import generate_monthly_installments
+        parcelas_mensais = generate_monthly_installments(
+            valor_total=item.valor,
+            parcelas=item.parcelas,
+            percentual_pessoa1=item.percentual_pessoa1,
+            percentual_pessoa2=item.percentual_pessoa2,
+            comecar_mes_atual=item.comecar_mes_atual,
+            conta_fixa=item.conta_fixa,
+            valor_manual_pessoa1=item.valor_manual_pessoa1,
+            valor_manual_pessoa2=item.valor_manual_pessoa2
+        )
+        
+        # Converte para formato de dicionário para armazenamento
+        parcelas_mensais_dict = [
+            {
+                'mes': p.mes,
+                'valor_pessoa1': p.valor_pessoa1,
+                'valor_pessoa2': p.valor_pessoa2,
+                'pago_pessoa1': p.pago_pessoa1,
+                'pago_pessoa2': p.pago_pessoa2
+            } for p in parcelas_mensais
+        ]
+        
         # Prepara os dados para inserção
         item_data = {
             'nome': item.nome,
@@ -149,7 +194,9 @@ async def create_payment_item(
             'valor_manual_pessoa1': item.valor_manual_pessoa1,
             'valor_manual_pessoa2': item.valor_manual_pessoa2,
             'pago_pessoa1': False,
-            'pago_pessoa2': False
+            'pago_pessoa2': False,
+            'parcelas_mensais': parcelas_mensais_dict,
+            'comecar_mes_atual': item.comecar_mes_atual
         }
         
         # Adiciona o item na planilha
@@ -164,7 +211,14 @@ async def create_payment_item(
             percentual_pessoa1=item.percentual_pessoa1,
             percentual_pessoa2=item.percentual_pessoa2,
             data_criacao=item_data['data_criacao'],
-            ativo=True
+            ativo=True,
+            conta_fixa=item.conta_fixa,
+            valor_manual_pessoa1=item.valor_manual_pessoa1,
+            valor_manual_pessoa2=item.valor_manual_pessoa2,
+            pago_pessoa1=False,
+            pago_pessoa2=False,
+            parcelas_mensais=parcelas_mensais,
+            comecar_mes_atual=item.comecar_mes_atual
         )
         
         logger.info(f"Item de pagamento criado: {item.nome}")
@@ -227,6 +281,18 @@ async def update_payment_item(
             update_data['pago_pessoa1'] = item_update.pago_pessoa1
         if item_update.pago_pessoa2 is not None:
             update_data['pago_pessoa2'] = item_update.pago_pessoa2
+        if item_update.parcelas_mensais is not None:
+            # Converte parcelas mensais para formato de dicionário
+            parcelas_mensais_dict = [
+                {
+                    'mes': p.mes,
+                    'valor_pessoa1': p.valor_pessoa1,
+                    'valor_pessoa2': p.valor_pessoa2,
+                    'pago_pessoa1': p.pago_pessoa1,
+                    'pago_pessoa2': p.pago_pessoa2
+                } for p in item_update.parcelas_mensais
+            ]
+            update_data['parcelas_mensais'] = parcelas_mensais_dict
         
         # Valida percentuais se ambos foram fornecidos
         if 'percentual_pessoa1' in update_data and 'percentual_pessoa2' in update_data:
@@ -254,6 +320,20 @@ async def update_payment_item(
         if not updated_item:
             raise HTTPException(status_code=404, detail="Item não encontrado após atualização")
         
+        # Converte parcelas mensais se existirem
+        parcelas_mensais = None
+        if updated_item.get('parcelas_mensais'):
+            from models import PaymentInstallment
+            parcelas_mensais = [
+                PaymentInstallment(
+                    mes=p['mes'],
+                    valor_pessoa1=p['valor_pessoa1'],
+                    valor_pessoa2=p['valor_pessoa2'],
+                    pago_pessoa1=p.get('pago_pessoa1', False),
+                    pago_pessoa2=p.get('pago_pessoa2', False)
+                ) for p in updated_item['parcelas_mensais']
+            ]
+        
         # Retorna o item atualizado
         result_item = PaymentItem(
             id=updated_item['id'],
@@ -268,7 +348,9 @@ async def update_payment_item(
             valor_manual_pessoa1=updated_item.get('valor_manual_pessoa1'),
             valor_manual_pessoa2=updated_item.get('valor_manual_pessoa2'),
             pago_pessoa1=updated_item.get('pago_pessoa1', False),
-            pago_pessoa2=updated_item.get('pago_pessoa2', False)
+            pago_pessoa2=updated_item.get('pago_pessoa2', False),
+            parcelas_mensais=parcelas_mensais,
+            comecar_mes_atual=updated_item.get('comecar_mes_atual', True)
         )
         
         logger.info(f"Item de pagamento atualizado: {item_id}")
@@ -279,6 +361,84 @@ async def update_payment_item(
     except Exception as e:
         logger.error(f"Erro ao atualizar item de pagamento: {e}")
         raise HTTPException(status_code=500, detail="Erro ao atualizar item de pagamento")
+
+from pydantic import BaseModel
+
+class PaymentRequest(BaseModel):
+    mes: str
+    pessoa: str
+
+@app.post("/payments/items/{item_id}/pay")
+async def mark_payment(
+    item_id: str,
+    payment_request: PaymentRequest,
+    manager: GoogleSheetsServiceManager = Depends(get_sheets_manager)
+):
+    """
+    Marca uma parcela específica como paga
+    """
+    try:
+        # Busca o item atual
+        items = manager.get_all_items()
+        current_item = None
+        
+        for item in items:
+            if item['id'] == item_id:
+                current_item = item
+                break
+        
+        if not current_item:
+            raise HTTPException(status_code=404, detail="Item não encontrado")
+        
+        # Verifica se tem parcelas mensais
+        parcelas_mensais = current_item.get('parcelas_mensais', [])
+        if not parcelas_mensais:
+            raise HTTPException(status_code=400, detail="Item não possui parcelas mensais")
+        
+        # Encontra a parcela do mês especificado
+        mes = payment_request.mes
+        pessoa = payment_request.pessoa
+        
+        parcela_encontrada = False
+        for parcela in parcelas_mensais:
+            if parcela['mes'] == mes:
+                if pessoa == "pessoa1":
+                    parcela['pago_pessoa1'] = True
+                elif pessoa == "pessoa2":
+                    parcela['pago_pessoa2'] = True
+                else:
+                    raise HTTPException(status_code=400, detail="Pessoa deve ser 'pessoa1' ou 'pessoa2'")
+                parcela_encontrada = True
+                break
+        
+        if not parcela_encontrada:
+            raise HTTPException(status_code=404, detail=f"Parcela do mês {mes} não encontrada")
+        
+        # Verifica se todas as parcelas foram pagas
+        if not current_item.get('conta_fixa', False):  # Só para contas parceladas
+            total_parcelas_pagas = sum(1 for p in parcelas_mensais if p.get('pago_pessoa1', False) and p.get('pago_pessoa2', False))
+            if total_parcelas_pagas == len(parcelas_mensais):
+                # Todas as parcelas foram pagas, marcar como inativo
+                update_data = {'parcelas_mensais': parcelas_mensais, 'ativo': False}
+                logger.info(f"Item {item_id} marcado como inativo - todas as parcelas foram pagas")
+            else:
+                update_data = {'parcelas_mensais': parcelas_mensais}
+        else:
+            update_data = {'parcelas_mensais': parcelas_mensais}
+        
+        success = manager.update_item(item_id, update_data)
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="Erro ao atualizar parcela")
+        
+        logger.info(f"Parcela {mes} marcada como paga para {pessoa} no item {item_id}")
+        return {"message": f"Parcela {mes} marcada como paga para {pessoa}"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao marcar parcela como paga: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao marcar parcela como paga")
 
 @app.delete("/payments/items/{item_id}")
 async def delete_payment_item(

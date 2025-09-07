@@ -182,6 +182,28 @@
                 </div>
               </div>
 
+              <!-- Campo para escolher início das parcelas -->
+              <div class="row mb-3">
+                <div class="col-12">
+                  <div class="form-check">
+                    <input 
+                      class="form-check-input" 
+                      type="checkbox" 
+                      id="comecar_mes_atual" 
+                      v-model="form.comecar_mes_atual"
+                    >
+                    <label class="form-check-label" for="comecar_mes_atual">
+                      <strong>Começar no mês atual</strong> - Se desmarcado, as parcelas começarão no próximo mês
+                    </label>
+                  </div>
+                  <small class="text-muted">
+                    Exemplo: Se você adicionar uma conta em 3x em janeiro:
+                    <br>• <strong>Marcado:</strong> 1ª parcela em janeiro, 2ª em fevereiro, 3ª em março
+                    <br>• <strong>Desmarcado:</strong> 1ª parcela em fevereiro, 2ª em março, 3ª em abril
+                  </small>
+                </div>
+              </div>
+
               <!-- Checkbox para conta fixa -->
               <div class="row mb-3">
                 <div class="col-12">
@@ -398,7 +420,8 @@ export default {
         percentual_pessoa2: 50,
         conta_fixa: false,
         valor_manual_pessoa1: null,
-        valor_manual_pessoa2: null
+        valor_manual_pessoa2: null,
+        comecar_mes_atual: true
       }
     }
   },
@@ -518,7 +541,8 @@ export default {
         percentual_pessoa2: item.percentual_pessoa2,
         conta_fixa: item.conta_fixa || false,
         valor_manual_pessoa1: item.valor_manual_pessoa1 || null,
-        valor_manual_pessoa2: item.valor_manual_pessoa2 || null
+        valor_manual_pessoa2: item.valor_manual_pessoa2 || null,
+        comecar_mes_atual: item.comecar_mes_atual !== undefined ? item.comecar_mes_atual : true
       }
       this.showEditModal = true
     },
@@ -553,7 +577,8 @@ export default {
         percentual_pessoa2: 50,
         conta_fixa: false,
         valor_manual_pessoa1: null,
-        valor_manual_pessoa2: null
+        valor_manual_pessoa2: null,
+        comecar_mes_atual: true
       }
     },
     formatCurrency(value) {

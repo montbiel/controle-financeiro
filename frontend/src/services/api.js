@@ -49,6 +49,14 @@ export const paymentService = {
     return response.data
   },
 
+  // Marcar parcela como paga
+  async markInstallmentPaid(itemId, mes, pessoa) {
+    const response = await api.put(`/payments/items/${itemId}/installments/${mes}/pay`, null, {
+      params: { pessoa }
+    })
+    return response.data
+  },
+
   // Verificar saúde da API
   async healthCheck() {
     const response = await api.get('/health')

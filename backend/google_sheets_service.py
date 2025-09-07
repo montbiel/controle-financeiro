@@ -71,18 +71,19 @@ class GoogleSheetsServiceManager:
             values = result.get('values', [])
             
             # Se não há dados ou não tem cabeçalhos, cria os cabeçalhos
-            if not values or len(values[0]) < 12:
+            if not values or len(values[0]) < 14:
                 headers = [
                     'ID', 'Nome', 'Valor', 'Parcelas', 
                     'Percentual Pessoa 1', 'Percentual Pessoa 2', 
                     'Data Criação', 'Ativo', 'Conta Fixa',
                     'Valor Manual Pessoa 1', 'Valor Manual Pessoa 2',
-                    'Pago Pessoa 1', 'Pago Pessoa 2'
+                    'Pago Pessoa 1', 'Pago Pessoa 2',
+                    'Parcelas Mensais', 'Começar Mês Atual'
                 ]
                 
                 self.service.spreadsheets().values().update(
                     spreadsheetId=self.spreadsheet_id,
-                    range=f'{self.sheet_name}!A1:M1',
+                    range=f'{self.sheet_name}!A1:O1',
                     valueInputOption='RAW',
                     body={'values': [headers]}
                 ).execute()
@@ -108,6 +109,15 @@ class GoogleSheetsServiceManager:
             
             for row in values:
                 if len(row) >= 7:  # Garante que a linha tem todos os campos necessários
+                    # Processa parcelas mensais se existirem
+                    parcelas_mensais = []
+                    if len(row) > 13 and row[13]:
+                        try:
+                            import json
+                            parcelas_mensais = json.loads(row[13])
+                        except:
+                            parcelas_mensais = []
+                    
                     item = {
                         'id': row[0] if len(row) > 0 else '',
                         'nome': row[1] if len(row) > 1 else '',
@@ -121,7 +131,9 @@ class GoogleSheetsServiceManager:
                         'valor_manual_pessoa1': float(row[9]) if len(row) > 9 and row[9] and row[9] != 'None' else None,
                         'valor_manual_pessoa2': float(row[10]) if len(row) > 10 and row[10] and row[10] != 'None' else None,
                         'pago_pessoa1': row[11].lower() == 'true' if len(row) > 11 else False,
-                        'pago_pessoa2': row[12].lower() == 'true' if len(row) > 12 else False
+                        'pago_pessoa2': row[12].lower() == 'true' if len(row) > 12 else False,
+                        'parcelas_mensais': parcelas_mensais,
+                        'comecar_mes_atual': row[14].lower() == 'true' if len(row) > 14 else True
                     }
                     items.append(item)
             
@@ -141,6 +153,12 @@ class GoogleSheetsServiceManager:
             import time
             item_id = str(int(time.time() * 1000))
             
+            # Prepara parcelas mensais como JSON
+            parcelas_mensais_json = ''
+            if item_data.get('parcelas_mensais'):
+                import json
+                parcelas_mensais_json = json.dumps(item_data['parcelas_mensais'])
+            
             # Prepara os dados para inserção
             row_data = [
                 item_id,
@@ -155,13 +173,15 @@ class GoogleSheetsServiceManager:
                 str(item_data.get('valor_manual_pessoa1', '')),
                 str(item_data.get('valor_manual_pessoa2', '')),
                 str(item_data.get('pago_pessoa1', False)),
-                str(item_data.get('pago_pessoa2', False))
+                str(item_data.get('pago_pessoa2', False)),
+                parcelas_mensais_json,
+                str(item_data.get('comecar_mes_atual', True))
             ]
             
             # Adiciona a linha na planilha
             self.service.spreadsheets().values().append(
                 spreadsheetId=self.spreadsheet_id,
-                range=f'{self.sheet_name}!A:M',
+                range=f'{self.sheet_name}!A:O',
                 valueInputOption='RAW',
                 insertDataOption='INSERT_ROWS',
                 body={'values': [row_data]}
@@ -184,6 +204,13 @@ class GoogleSheetsServiceManager:
             for i, item in enumerate(items):
                 if item['id'] == item_id:
                     logger.info(f"Item encontrado na linha {i + 2}")
+                    # Prepara parcelas mensais como JSON
+                    parcelas_mensais = item_data.get('parcelas_mensais', item.get('parcelas_mensais', []))
+                    parcelas_mensais_json = ''
+                    if parcelas_mensais:
+                        import json
+                        parcelas_mensais_json = json.dumps(parcelas_mensais)
+                    
                     # Prepara os dados atualizados
                     row_data = [
                         item_id,
@@ -198,7 +225,9 @@ class GoogleSheetsServiceManager:
                         str(item_data.get('valor_manual_pessoa1', item.get('valor_manual_pessoa1', '')) if item_data.get('valor_manual_pessoa1', item.get('valor_manual_pessoa1', '')) is not None else ''),
                         str(item_data.get('valor_manual_pessoa2', item.get('valor_manual_pessoa2', '')) if item_data.get('valor_manual_pessoa2', item.get('valor_manual_pessoa2', '')) is not None else ''),
                         str(item_data.get('pago_pessoa1', item.get('pago_pessoa1', False))),
-                        str(item_data.get('pago_pessoa2', item.get('pago_pessoa2', False)))
+                        str(item_data.get('pago_pessoa2', item.get('pago_pessoa2', False))),
+                        parcelas_mensais_json,
+                        str(item_data.get('comecar_mes_atual', item.get('comecar_mes_atual', True)))
                     ]
                     
                     # Atualiza a linha (linha 2 + índice, pois linha 1 são os cabeçalhos)
@@ -206,7 +235,7 @@ class GoogleSheetsServiceManager:
                     
                     self.service.spreadsheets().values().update(
                         spreadsheetId=self.spreadsheet_id,
-                        range=f'{self.sheet_name}!A{row_number}:M{row_number}',
+                        range=f'{self.sheet_name}!A{row_number}:O{row_number}',
                         valueInputOption='RAW',
                         body={'values': [row_data]}
                     ).execute()
