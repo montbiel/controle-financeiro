@@ -1,11 +1,11 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 import logging
 from datetime import datetime
 
 from models import PaymentItem, PaymentSummary, PaymentItemCreate, PaymentItemUpdate
-from google_sheets import GoogleSheetsManager
+from google_sheets_service import GoogleSheetsServiceManager
 from utils import calculate_monthly_payments, validate_percentages
 
 # Configurar logging
@@ -36,7 +36,7 @@ def get_sheets_manager():
     global sheets_manager
     if sheets_manager is None:
         try:
-            sheets_manager = GoogleSheetsManager()
+            sheets_manager = GoogleSheetsServiceManager()
         except Exception as e:
             logger.error(f"Erro ao inicializar Google Sheets Manager: {e}")
             raise HTTPException(status_code=500, detail="Erro ao conectar com Google Sheets")
@@ -74,7 +74,7 @@ async def health_check():
         return {"status": "unhealthy", "error": str(e)}
 
 @app.get("/payments/summary", response_model=PaymentSummary)
-async def get_payment_summary(manager: GoogleSheetsManager = Depends(get_sheets_manager)):
+async def get_payment_summary(manager: GoogleSheetsServiceManager = Depends(get_sheets_manager)):
     """
     Retorna o resumo dos pagamentos mensais
     """
@@ -87,7 +87,7 @@ async def get_payment_summary(manager: GoogleSheetsManager = Depends(get_sheets_
         raise HTTPException(status_code=500, detail="Erro ao buscar dados de pagamentos")
 
 @app.get("/payments/items", response_model=List[PaymentItem])
-async def get_payment_items(manager: GoogleSheetsManager = Depends(get_sheets_manager)):
+async def get_payment_items(manager: GoogleSheetsServiceManager = Depends(get_sheets_manager)):
     """
     Retorna todos os itens de pagamento
     """
@@ -116,7 +116,7 @@ async def get_payment_items(manager: GoogleSheetsManager = Depends(get_sheets_ma
 @app.post("/payments/items", response_model=PaymentItem)
 async def create_payment_item(
     item: PaymentItemCreate,
-    manager: GoogleSheetsManager = Depends(get_sheets_manager)
+    manager: GoogleSheetsServiceManager = Depends(get_sheets_manager)
 ):
     """
     Cria um novo item de pagamento
@@ -175,7 +175,7 @@ async def create_payment_item(
 async def update_payment_item(
     item_id: str,
     item_update: PaymentItemUpdate,
-    manager: GoogleSheetsManager = Depends(get_sheets_manager)
+    manager: GoogleSheetsServiceManager = Depends(get_sheets_manager)
 ):
     """
     Atualiza um item de pagamento existente
@@ -260,10 +260,80 @@ async def update_payment_item(
         logger.error(f"Erro ao atualizar item de pagamento: {e}")
         raise HTTPException(status_code=500, detail="Erro ao atualizar item de pagamento")
 
+@app.put("/payments/items/{item_id}/installments/{mes}/pay")
+async def mark_installment_paid(
+    item_id: str,
+    mes: str,
+    pessoa: str = Query(..., description="Pessoa que está pagando (pessoa1 ou pessoa2)"),
+    manager: GoogleSheetsServiceManager = Depends(get_sheets_manager)
+):
+    """
+    Marca uma parcela específica como paga (rota compatível com frontend)
+    """
+    try:
+        # Busca o item atual
+        items = manager.get_all_items()
+        current_item = None
+        
+        for item in items:
+            if item['id'] == item_id:
+                current_item = item
+                break
+        
+        if not current_item:
+            raise HTTPException(status_code=404, detail="Item não encontrado")
+        
+        # Verifica se tem parcelas mensais
+        parcelas_mensais = current_item.get('parcelas_mensais', [])
+        if not parcelas_mensais:
+            raise HTTPException(status_code=400, detail="Item não possui parcelas mensais")
+        
+        # Encontra a parcela do mês especificado
+        parcela_encontrada = False
+        for parcela in parcelas_mensais:
+            if parcela['mes'] == mes:
+                if pessoa == "pessoa1":
+                    parcela['pago_pessoa1'] = True
+                elif pessoa == "pessoa2":
+                    parcela['pago_pessoa2'] = True
+                else:
+                    raise HTTPException(status_code=400, detail="Pessoa deve ser 'pessoa1' ou 'pessoa2'")
+                parcela_encontrada = True
+                break
+        
+        if not parcela_encontrada:
+            raise HTTPException(status_code=404, detail=f"Parcela do mês {mes} não encontrada")
+        
+        # Verifica se todas as parcelas foram pagas
+        if not current_item.get('conta_fixa', False):  # Só para contas parceladas
+            total_parcelas_pagas = sum(1 for p in parcelas_mensais if p.get('pago_pessoa1', False) and p.get('pago_pessoa2', False))
+            if total_parcelas_pagas == len(parcelas_mensais):
+                # Todas as parcelas foram pagas, marcar como inativo
+                update_data = {'parcelas_mensais': parcelas_mensais, 'ativo': False}
+                logger.info(f"Item {item_id} marcado como inativo - todas as parcelas foram pagas")
+            else:
+                update_data = {'parcelas_mensais': parcelas_mensais}
+        else:
+            update_data = {'parcelas_mensais': parcelas_mensais}
+        
+        success = manager.update_item(item_id, update_data)
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="Erro ao atualizar parcela")
+        
+        logger.info(f"Parcela {mes} marcada como paga para {pessoa} no item {item_id}")
+        return {"message": f"Parcela {mes} marcada como paga para {pessoa}"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao marcar parcela como paga: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao marcar parcela como paga")
+
 @app.delete("/payments/items/{item_id}")
 async def delete_payment_item(
     item_id: str,
-    manager: GoogleSheetsManager = Depends(get_sheets_manager)
+    manager: GoogleSheetsServiceManager = Depends(get_sheets_manager)
 ):
     """
     Remove um item de pagamento (soft delete)

@@ -51,8 +51,8 @@ export const paymentService = {
 
   // Marcar parcela como paga
   async markInstallmentPaid(itemId, mes, pessoa) {
-    const response = await api.put(`/payments/items/${itemId}/installments/${mes}/pay`, null, {
-      params: { pessoa }
+    const response = await api.put(`/payments/items/${itemId}/installments/pay`, null, {
+      params: { mes, pessoa }
     })
     return response.data
   },

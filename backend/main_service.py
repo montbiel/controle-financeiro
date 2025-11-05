@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 import logging
@@ -399,6 +399,82 @@ async def mark_payment(
         mes = payment_request.mes
         pessoa = payment_request.pessoa
         
+        parcela_encontrada = False
+        for parcela in parcelas_mensais:
+            if parcela['mes'] == mes:
+                if pessoa == "pessoa1":
+                    parcela['pago_pessoa1'] = True
+                elif pessoa == "pessoa2":
+                    parcela['pago_pessoa2'] = True
+                else:
+                    raise HTTPException(status_code=400, detail="Pessoa deve ser 'pessoa1' ou 'pessoa2'")
+                parcela_encontrada = True
+                break
+        
+        if not parcela_encontrada:
+            raise HTTPException(status_code=404, detail=f"Parcela do mês {mes} não encontrada")
+        
+        # Verifica se todas as parcelas foram pagas
+        if not current_item.get('conta_fixa', False):  # Só para contas parceladas
+            total_parcelas_pagas = sum(1 for p in parcelas_mensais if p.get('pago_pessoa1', False) and p.get('pago_pessoa2', False))
+            if total_parcelas_pagas == len(parcelas_mensais):
+                # Todas as parcelas foram pagas, marcar como inativo
+                update_data = {'parcelas_mensais': parcelas_mensais, 'ativo': False}
+                logger.info(f"Item {item_id} marcado como inativo - todas as parcelas foram pagas")
+            else:
+                update_data = {'parcelas_mensais': parcelas_mensais}
+        else:
+            update_data = {'parcelas_mensais': parcelas_mensais}
+        
+        success = manager.update_item(item_id, update_data)
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="Erro ao atualizar parcela")
+        
+        logger.info(f"Parcela {mes} marcada como paga para {pessoa} no item {item_id}")
+        return {"message": f"Parcela {mes} marcada como paga para {pessoa}"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao marcar parcela como paga: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao marcar parcela como paga")
+
+@app.put("/payments/items/{item_id}/installments/pay")
+async def mark_installment_paid(
+    item_id: str,
+    mes: str = Query(..., description="Mês da parcela no formato MM/YYYY (ex: 11/2025)"),
+    pessoa: str = Query(..., description="Pessoa que está pagando (pessoa1 ou pessoa2)"),
+    manager: GoogleSheetsServiceManager = Depends(get_sheets_manager)
+):
+    """
+    Marca uma parcela específica como paga (rota compatível com frontend)
+    """
+    try:
+        # Log para debug - verificar o mês recebido
+        logger.info(f"Marcando parcela como paga - Item: {item_id}, Mês: {mes}, Pessoa: {pessoa}")
+        
+        # Busca o item atual
+        items = manager.get_all_items()
+        current_item = None
+        
+        for item in items:
+            if item['id'] == item_id:
+                current_item = item
+                break
+        
+        if not current_item:
+            raise HTTPException(status_code=404, detail="Item não encontrado")
+        
+        # Verifica se tem parcelas mensais
+        parcelas_mensais = current_item.get('parcelas_mensais', [])
+        if not parcelas_mensais:
+            raise HTTPException(status_code=400, detail="Item não possui parcelas mensais")
+        
+        # Log para debug - verificar parcelas disponíveis
+        logger.info(f"Parcelas disponíveis: {[p.get('mes') for p in parcelas_mensais]}")
+        
+        # Encontra a parcela do mês especificado
         parcela_encontrada = False
         for parcela in parcelas_mensais:
             if parcela['mes'] == mes:
