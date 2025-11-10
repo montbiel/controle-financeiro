@@ -1,5 +1,6 @@
 import os
 import json
+import base64
 from typing import List, Dict, Any
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -24,22 +25,37 @@ class GoogleSheetsServiceManager:
     
     def _authenticate(self):
         """Autentica usando Service Account"""
-        service_account_file = os.getenv('GOOGLE_SERVICE_ACCOUNT_FILE', 'service-account.json')
-        
-        # Verifica se o arquivo de service account existe
-        if not os.path.exists(service_account_file):
-            logger.error(f"Arquivo de service account não encontrado: {service_account_file}")
-            raise FileNotFoundError(f"Arquivo de service account não encontrado: {service_account_file}")
-        
         try:
-            # Carrega as credenciais da service account
-            credentials = service_account.Credentials.from_service_account_file(
-                service_account_file,
-                scopes=['https://www.googleapis.com/auth/spreadsheets']
-            )
+            # Tenta primeiro ler de variável de ambiente (base64) - para Railway
+            service_account_base64 = os.getenv('GOOGLE_SERVICE_ACCOUNT_BASE64')
+            
+            if service_account_base64:
+                # Decodifica o JSON da variável de ambiente
+                service_account_info = json.loads(base64.b64decode(service_account_base64).decode('utf-8'))
+                credentials = service_account.Credentials.from_service_account_info(
+                    service_account_info,
+                    scopes=['https://www.googleapis.com/auth/spreadsheets']
+                )
+                logger.info("Autenticação com Google Sheets realizada com sucesso usando Service Account (variável de ambiente)")
+            else:
+                # Fallback: tenta ler do arquivo (para desenvolvimento local)
+                service_account_file = os.getenv('GOOGLE_SERVICE_ACCOUNT_FILE', 'service-account.json')
+                
+                if not os.path.exists(service_account_file):
+                    logger.error(f"Arquivo de service account não encontrado: {service_account_file}")
+                    raise FileNotFoundError(
+                        f"Arquivo de service account não encontrado: {service_account_file}. "
+                        "Configure GOOGLE_SERVICE_ACCOUNT_BASE64 ou coloque o arquivo service-account.json"
+                    )
+                
+                # Carrega as credenciais da service account do arquivo
+                credentials = service_account.Credentials.from_service_account_file(
+                    service_account_file,
+                    scopes=['https://www.googleapis.com/auth/spreadsheets']
+                )
+                logger.info("Autenticação com Google Sheets realizada com sucesso usando Service Account (arquivo)")
             
             self.service = build('sheets', 'v4', credentials=credentials)
-            logger.info("Autenticação com Google Sheets realizada com sucesso usando Service Account")
             
         except Exception as e:
             logger.error(f"Erro na autenticação: {e}")

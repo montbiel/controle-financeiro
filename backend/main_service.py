@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 import logging
+import os
 from datetime import datetime
 
 from models import PaymentItem, PaymentSummary, PaymentItemCreate, PaymentItemUpdate
@@ -20,9 +21,13 @@ app = FastAPI(
 )
 
 # Configurar CORS
+# Permite localhost para desenvolvimento e montbiel.com.br para produção
+allowed_origins = os.getenv('CORS_ORIGINS', 'http://localhost:8081,http://localhost:8080,https://montbiel.com.br,https://www.montbiel.com.br').split(',')
+allowed_origins = [origin.strip() for origin in allowed_origins if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Em produção, especifique os domínios permitidos
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -543,7 +548,8 @@ if __name__ == "__main__":
     import uvicorn
     import os
     
+    # Railway fornece PORT, mas mantém compatibilidade com API_PORT para desenvolvimento local
     host = os.getenv('API_HOST', '0.0.0.0')
-    port = int(os.getenv('API_PORT', 8000))
+    port = int(os.getenv('PORT') or os.getenv('API_PORT', 8000))
     
     uvicorn.run(app, host=host, port=port)

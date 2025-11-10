@@ -5,7 +5,8 @@
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
-    "dev": "vue-cli-service serve"
+    "dev": "vue-cli-service serve",
+    "start": "npm run build && npx serve -s dist -l $PORT"
   },
   "dependencies": {
     "vue": "^3.3.4",

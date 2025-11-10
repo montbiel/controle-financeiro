@@ -1,6 +1,32 @@
 import axios from 'axios'
 
-const API_BASE_URL = 'http://localhost:8000'
+// Detectar automaticamente a URL da API baseada no hostname e ambiente
+function getApiBaseUrl() {
+  // Em produção, usar variável de ambiente se configurada (Railway)
+  if (process.env.VUE_APP_API_URL) {
+    return process.env.VUE_APP_API_URL;
+  }
+  
+  const hostname = window.location.hostname;
+  const protocol = window.location.protocol;
+  
+  // Se for localhost ou 127.0.0.1, usar localhost (desenvolvimento local)
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:8000';
+  }
+  
+  // Se for montbiel.com.br (produção), usar a API do Railway
+  if (hostname === 'montbiel.com.br' || hostname === 'www.montbiel.com.br') {
+    // Em produção, assumimos que a API está em um subdomínio ou caminho
+    // Ajuste conforme sua configuração do Railway
+    return `${protocol}//api.montbiel.com.br`; // ou `${protocol}//${hostname}/api`
+  }
+  
+  // Para desenvolvimento em rede local, usar o mesmo IP na porta 8000
+  return `http://${hostname}:8000`;
+}
+
+const API_BASE_URL = getApiBaseUrl()
 
 const api = axios.create({
   baseURL: API_BASE_URL,
