@@ -25,11 +25,23 @@
               </router-link>
             </li>
             <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <a 
+                class="nav-link dropdown-toggle" 
+                href="#" 
+                id="userDropdown" 
+                role="button" 
+                @click.prevent="toggleDropdown"
+                :aria-expanded="showDropdown"
+              >
                 <i class="fas fa-user me-1"></i>
                 {{ user.email }}
               </a>
-              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+              <ul 
+                class="dropdown-menu dropdown-menu-end" 
+                :class="{ show: showDropdown }"
+                aria-labelledby="userDropdown"
+                @click.stop
+              >
                 <li>
                   <a class="dropdown-item" href="#" @click.prevent="handleLogout">
                     <i class="fas fa-sign-out-alt me-2"></i>
@@ -59,24 +71,47 @@
 </template>
 
 <script>
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useAuth } from './composables/useAuth'
 
 export default {
   name: 'App',
   setup() {
     const { user, logout } = useAuth()
+    const showDropdown = ref(false)
 
     const handleLogout = async () => {
       try {
+        showDropdown.value = false
         await logout()
       } catch (error) {
         console.error('Erro ao fazer logout:', error)
       }
     }
 
+    const toggleDropdown = () => {
+      showDropdown.value = !showDropdown.value
+    }
+
+    const closeDropdown = (event) => {
+      if (!event.target.closest('.dropdown')) {
+        showDropdown.value = false
+      }
+    }
+
+    onMounted(() => {
+      document.addEventListener('click', closeDropdown)
+    })
+
+    onUnmounted(() => {
+      document.removeEventListener('click', closeDropdown)
+    })
+
     return {
       user,
-      handleLogout
+      showDropdown,
+      handleLogout,
+      toggleDropdown
     }
   }
 }
@@ -133,5 +168,14 @@ main {
 
 .text-warning {
   color: #fd7e14 !important;
+}
+
+.dropdown-menu {
+  position: absolute;
+  z-index: 1000;
+}
+
+.dropdown-menu.show {
+  display: block;
 }
 </style>

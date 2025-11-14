@@ -117,13 +117,6 @@
               </form>
             </div>
           </div>
-
-          <!-- Footer opcional -->
-          <div class="text-center mt-3">
-            <small class="text-muted">
-              Sistema de Controle de Pagamentos - Desenvolvido com Vue.js e FastAPI
-            </small>
-          </div>
         </div>
       </div>
     </div>

@@ -99,17 +99,16 @@
               <button 
                 class="btn btn-outline-primary w-100 text-start" 
                 type="button" 
-                data-bs-toggle="collapse" 
-                data-bs-target="#gabrielResumo" 
-                aria-expanded="false"
+                @click="toggleGabrielResumo"
+                :aria-expanded="showGabrielResumo"
               >
                 <i class="fas fa-user me-2"></i>
                 <strong>{{ paymentSummary.pessoa1 }}</strong>
                 <span class="float-end">
-                  <i class="fas fa-chevron-down"></i>
+                  <i :class="showGabrielResumo ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
                 </span>
               </button>
-              <div class="collapse mt-2" id="gabrielResumo">
+              <div class="collapse mt-2" :class="{ show: showGabrielResumo }" id="gabrielResumo">
                 <div class="card card-body">
                   <div class="row">
                     <div class="col-md-4">
@@ -166,17 +165,16 @@
               <button 
                 class="btn btn-outline-success w-100 text-start" 
                 type="button" 
-                data-bs-toggle="collapse" 
-                data-bs-target="#julianaResumo" 
-                aria-expanded="false"
+                @click="toggleJulianaResumo"
+                :aria-expanded="showJulianaResumo"
               >
                 <i class="fas fa-user me-2"></i>
                 <strong>{{ paymentSummary.pessoa2 }}</strong>
                 <span class="float-end">
-                  <i class="fas fa-chevron-down"></i>
+                  <i :class="showJulianaResumo ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
                 </span>
               </button>
-              <div class="collapse mt-2" id="julianaResumo">
+              <div class="collapse mt-2" :class="{ show: showJulianaResumo }" id="julianaResumo">
                 <div class="card card-body">
                   <div class="row">
                     <div class="col-md-4">
@@ -356,7 +354,9 @@ export default {
     return {
       paymentSummary: null,
       loading: true,
-      apiStatus: 'checking'
+      apiStatus: 'checking',
+      showGabrielResumo: false,
+      showJulianaResumo: false
     }
   },
   computed: {
@@ -476,6 +476,12 @@ export default {
       
       // Lógica antiga (compatibilidade)
       return personNumber === 1 ? item.pago_pessoa1 : item.pago_pessoa2
+    },
+    toggleGabrielResumo() {
+      this.showGabrielResumo = !this.showGabrielResumo
+    },
+    toggleJulianaResumo() {
+      this.showJulianaResumo = !this.showJulianaResumo
     },
     async togglePayment(itemId, personNumber, isPaid) {
       try {
