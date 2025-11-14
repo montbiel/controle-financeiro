@@ -6,6 +6,11 @@ import {
 } from 'firebase/auth'
 import { auth } from '../firebase/config'
 
+// Verificar se auth está disponível
+if (!auth) {
+  console.warn('Firebase Auth não está disponível. Verifique as variáveis de ambiente.')
+}
+
 const STORAGE_KEY_AUTH = 'firebase_auth_token'
 const STORAGE_KEY_REMEMBER = 'firebase_remember_me'
 
@@ -60,6 +65,12 @@ class AuthService {
    * @returns {Promise<Object>} Dados do usuário
    */
   async login(email, password, rememberMe = false) {
+    if (!auth) {
+      throw {
+        code: 'auth/not-initialized',
+        message: 'Firebase não está configurado. Verifique as variáveis de ambiente.'
+      }
+    }
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
       const user = userCredential.user

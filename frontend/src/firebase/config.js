@@ -25,15 +25,24 @@ const requiredEnvVars = [
 const missingVars = requiredEnvVars.filter(varName => !process.env[varName])
 
 if (missingVars.length > 0 && process.env.NODE_ENV === 'production') {
-  console.error('Erro: Variáveis de ambiente do Firebase não configuradas:', missingVars)
-  throw new Error(`Variáveis de ambiente do Firebase não configuradas: ${missingVars.join(', ')}`)
+  console.warn('Aviso: Variáveis de ambiente do Firebase não configuradas:', missingVars)
+  console.warn('O sistema pode não funcionar corretamente sem essas variáveis.')
 }
 
-// Inicializar Firebase
-const app = initializeApp(firebaseConfig)
+// Inicializar Firebase apenas se tiver configuração mínima
+let app = null
+try {
+  if (firebaseConfig.apiKey && firebaseConfig.projectId) {
+    app = initializeApp(firebaseConfig)
+  } else {
+    console.warn('Firebase não inicializado: configuração incompleta')
+  }
+} catch (error) {
+  console.error('Erro ao inicializar Firebase:', error)
+}
 
-// Inicializar Firebase Authentication
-export const auth = getAuth(app)
+// Inicializar Firebase Authentication (apenas se app foi inicializado)
+export const auth = app ? getAuth(app) : null
 
 // Exportar app para uso futuro (se necessário)
 export default app

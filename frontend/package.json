@@ -6,7 +6,7 @@
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "dev": "vue-cli-service serve",
-    "start": "npm run build && npx serve -s dist -l $PORT"
+    "start": "npm run build && npx serve dist -s -l $PORT"
   },
   "dependencies": {
     "@vueuse/core": "^10.4.1",
