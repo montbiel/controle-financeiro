@@ -1,6 +1,7 @@
 <template>
   <div id="app">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <!-- Navbar apenas se estiver autenticado -->
+    <nav v-if="user" class="navbar navbar-expand-lg navbar-dark bg-primary">
       <div class="container">
         <a class="navbar-brand" href="#">
           <i class="fas fa-calculator me-2"></i>
@@ -23,19 +24,34 @@
                 Itens
               </router-link>
             </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fas fa-user me-1"></i>
+                {{ user.email }}
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                <li>
+                  <a class="dropdown-item" href="#" @click.prevent="handleLogout">
+                    <i class="fas fa-sign-out-alt me-2"></i>
+                    Sair
+                  </a>
+                </li>
+              </ul>
+            </li>
           </ul>
         </div>
       </div>
     </nav>
 
-    <main class="container mt-4">
+    <main :class="user ? 'container mt-4' : ''">
       <router-view />
     </main>
 
-    <footer class="bg-light text-center py-3 mt-5">
+    <!-- Footer apenas se estiver autenticado -->
+    <footer v-if="user" class="bg-light text-center py-3 mt-5">
       <div class="container">
         <p class="text-muted mb-0">
-          Sistema de Controle de Pagamentos - Desenvolvido com Vue.js e FastAPI
+          Sistema de Controle de Pagamentos
         </p>
       </div>
     </footer>
@@ -43,8 +59,26 @@
 </template>
 
 <script>
+import { useAuth } from './composables/useAuth'
+
 export default {
-  name: 'App'
+  name: 'App',
+  setup() {
+    const { user, logout } = useAuth()
+
+    const handleLogout = async () => {
+      try {
+        await logout()
+      } catch (error) {
+        console.error('Erro ao fazer logout:', error)
+      }
+    }
+
+    return {
+      user,
+      handleLogout
+    }
+  }
 }
 </script>
 

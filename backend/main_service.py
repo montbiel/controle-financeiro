@@ -8,6 +8,7 @@ from datetime import datetime
 from models import PaymentItem, PaymentSummary, PaymentItemCreate, PaymentItemUpdate
 from google_sheets_service import GoogleSheetsServiceManager
 from utils import calculate_monthly_payments, validate_percentages
+from dependencies.auth import get_current_user
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -142,6 +143,7 @@ async def get_payment_items(manager: GoogleSheetsServiceManager = Depends(get_sh
 @app.post("/payments/items", response_model=PaymentItem)
 async def create_payment_item(
     item: PaymentItemCreate,
+    current_user: dict = Depends(get_current_user),
     manager: GoogleSheetsServiceManager = Depends(get_sheets_manager)
 ):
     """
@@ -239,6 +241,7 @@ async def create_payment_item(
 async def update_payment_item(
     item_id: str,
     item_update: PaymentItemUpdate,
+    current_user: dict = Depends(get_current_user),
     manager: GoogleSheetsServiceManager = Depends(get_sheets_manager)
 ):
     """
@@ -450,6 +453,7 @@ async def mark_installment_paid(
     item_id: str,
     mes: str = Query(..., description="Mês da parcela no formato MM/YYYY (ex: 11/2025)"),
     pessoa: str = Query(..., description="Pessoa que está pagando (pessoa1 ou pessoa2)"),
+    current_user: dict = Depends(get_current_user),
     manager: GoogleSheetsServiceManager = Depends(get_sheets_manager)
 ):
     """
@@ -524,6 +528,7 @@ async def mark_installment_paid(
 @app.delete("/payments/items/{item_id}")
 async def delete_payment_item(
     item_id: str,
+    current_user: dict = Depends(get_current_user),
     manager: GoogleSheetsServiceManager = Depends(get_sheets_manager)
 ):
     """

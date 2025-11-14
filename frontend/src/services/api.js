@@ -1,4 +1,5 @@
 import axios from 'axios'
+import authService from './auth'
 
 // Detectar automaticamente a URL da API baseada no hostname e ambiente
 function getApiBaseUrl() {
@@ -35,11 +36,58 @@ const api = axios.create({
   }
 })
 
-// Interceptor para tratamento de erros
+// Lista de rotas públicas que não precisam de token
+const publicRoutes = ['/health', '/docs', '/openapi.json']
+
+// Interceptor de requisição para adicionar token
+api.interceptors.request.use(
+  async (config) => {
+    // Verifica se a rota é pública
+    const isPublicRoute = publicRoutes.some(route => config.url?.includes(route))
+    
+    if (!isPublicRoute) {
+      try {
+        // Obtém o token atual
+        const token = await authService.getCurrentToken()
+        
+        if (token) {
+          // Adiciona o token no header Authorization
+          config.headers.Authorization = `Bearer ${token}`
+        }
+      } catch (error) {
+        console.error('Erro ao obter token:', error)
+        // Não bloqueia a requisição, mas pode falhar no backend
+      }
+    }
+    
+    return config
+  },
+  error => {
+    return Promise.reject(error)
+  }
+)
+
+// Interceptor de resposta para tratamento de erros
 api.interceptors.response.use(
   response => response,
-  error => {
+  async error => {
     console.error('Erro na API:', error.response?.data || error.message)
+    
+    // Se receber 401 (não autenticado), redireciona para login
+    if (error.response?.status === 401) {
+      // Limpa a autenticação
+      try {
+        await authService.logout()
+      } catch (logoutError) {
+        console.error('Erro ao fazer logout:', logoutError)
+      }
+      
+      // Redireciona para login apenas se não estiver já na página de login
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
+    }
+    
     return Promise.reject(error)
   }
 )

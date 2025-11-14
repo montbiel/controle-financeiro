@@ -391,7 +391,7 @@ export default {
     apiStatusMessage() {
       switch (this.apiStatus) {
         case 'healthy':
-          return 'API conectada e funcionando corretamente'
+          return 'Conectado corretamente'
         case 'unhealthy':
           return 'Erro na conexão com a API. Verifique se o backend está rodando.'
         default:
