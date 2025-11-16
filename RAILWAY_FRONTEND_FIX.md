@@ -100,3 +100,4 @@ E no package.json:
 3. A Railway deve fazer rebuild automaticamente
 4. Verifique se o problema foi resolvido
 
+

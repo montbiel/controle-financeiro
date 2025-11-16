@@ -149,7 +149,7 @@ class GoogleSheetsServiceManager:
                         'pago_pessoa1': row[11].lower() == 'true' if len(row) > 11 else False,
                         'pago_pessoa2': row[12].lower() == 'true' if len(row) > 12 else False,
                         'parcelas_mensais': parcelas_mensais,
-                        'comecar_mes_atual': row[14].lower() == 'true' if len(row) > 14 else True
+                        'comecar_mes_atual': row[14].lower() == 'true' if len(row) > 14 else False
                     }
                     items.append(item)
             
@@ -191,7 +191,7 @@ class GoogleSheetsServiceManager:
                 str(item_data.get('pago_pessoa1', False)),
                 str(item_data.get('pago_pessoa2', False)),
                 parcelas_mensais_json,
-                str(item_data.get('comecar_mes_atual', True))
+                str(item_data.get('comecar_mes_atual', False))
             ]
             
             # Adiciona a linha na planilha
@@ -243,7 +243,7 @@ class GoogleSheetsServiceManager:
                         str(item_data.get('pago_pessoa1', item.get('pago_pessoa1', False))),
                         str(item_data.get('pago_pessoa2', item.get('pago_pessoa2', False))),
                         parcelas_mensais_json,
-                        str(item_data.get('comecar_mes_atual', item.get('comecar_mes_atual', True)))
+                        str(item_data.get('comecar_mes_atual', item.get('comecar_mes_atual', False)))
                     ]
                     
                     # Atualiza a linha (linha 2 + índice, pois linha 1 são os cabeçalhos)

@@ -24,7 +24,7 @@ class PaymentItem(BaseModel):
     pago_pessoa1: bool = False  # Se a pessoa 1 já pagou (DEPRECATED - usar parcelas)
     pago_pessoa2: bool = False  # Se a pessoa 2 já pagou (DEPRECATED - usar parcelas)
     parcelas_mensais: Optional[List[PaymentInstallment]] = None  # Nova estrutura de parcelas
-    comecar_mes_atual: bool = True  # Se deve começar no mês atual
+    comecar_mes_atual: bool = False  # Se deve começar no mês atual
 
 class PaymentSummary(BaseModel):
     pessoa1: str = "Gabriel"
@@ -47,7 +47,7 @@ class PaymentItemCreate(BaseModel):
     conta_fixa: bool = False
     valor_manual_pessoa1: Optional[float] = None
     valor_manual_pessoa2: Optional[float] = None
-    comecar_mes_atual: bool = True  # Se deve começar no mês atual
+    comecar_mes_atual: bool = False  # Se deve começar no mês atual
 
 class PaymentItemUpdate(BaseModel):
     nome: Optional[str] = None
@@ -62,3 +62,4 @@ class PaymentItemUpdate(BaseModel):
     pago_pessoa1: Optional[bool] = None  # DEPRECATED
     pago_pessoa2: Optional[bool] = None  # DEPRECATED
     parcelas_mensais: Optional[List[PaymentInstallment]] = None  # Para atualizar parcelas específicas
+    comecar_mes_atual: Optional[bool] = None  # Se deve começar no mês atual

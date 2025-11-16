@@ -131,7 +131,7 @@ async def get_payment_items(manager: GoogleSheetsServiceManager = Depends(get_sh
                 pago_pessoa1=item.get('pago_pessoa1', False),
                 pago_pessoa2=item.get('pago_pessoa2', False),
                 parcelas_mensais=parcelas_mensais,
-                comecar_mes_atual=item.get('comecar_mes_atual', True)
+                comecar_mes_atual=item.get('comecar_mes_atual', False)
             )
             payment_items.append(payment_item)
         
@@ -289,6 +289,8 @@ async def update_payment_item(
             update_data['pago_pessoa1'] = item_update.pago_pessoa1
         if item_update.pago_pessoa2 is not None:
             update_data['pago_pessoa2'] = item_update.pago_pessoa2
+        if item_update.comecar_mes_atual is not None:
+            update_data['comecar_mes_atual'] = item_update.comecar_mes_atual
         if item_update.parcelas_mensais is not None:
             # Converte parcelas mensais para formato de dicionário
             parcelas_mensais_dict = [
@@ -299,6 +301,56 @@ async def update_payment_item(
                     'pago_pessoa1': p.pago_pessoa1,
                     'pago_pessoa2': p.pago_pessoa2
                 } for p in item_update.parcelas_mensais
+            ]
+            update_data['parcelas_mensais'] = parcelas_mensais_dict
+        
+        # Verifica se precisa regenerar as parcelas
+        # Regenera se mudou: valor, parcelas, percentuais, conta_fixa, valores manuais, ou comecar_mes_atual
+        needs_regenerate = (
+            'valor' in update_data or
+            'parcelas' in update_data or
+            'percentual_pessoa1' in update_data or
+            'percentual_pessoa2' in update_data or
+            'conta_fixa' in update_data or
+            'valor_manual_pessoa1' in update_data or
+            'valor_manual_pessoa2' in update_data or
+            'comecar_mes_atual' in update_data
+        )
+        
+        # Se precisa regenerar e não foram fornecidas parcelas específicas, regenera
+        if needs_regenerate and 'parcelas_mensais' not in update_data:
+            # Usa valores atualizados ou valores atuais
+            valor = update_data.get('valor', current_item['valor'])
+            parcelas = update_data.get('parcelas', current_item['parcelas'])
+            percentual_pessoa1 = update_data.get('percentual_pessoa1', current_item['percentual_pessoa1'])
+            percentual_pessoa2 = update_data.get('percentual_pessoa2', current_item['percentual_pessoa2'])
+            conta_fixa = update_data.get('conta_fixa', current_item.get('conta_fixa', False))
+            valor_manual_pessoa1 = update_data.get('valor_manual_pessoa1', current_item.get('valor_manual_pessoa1'))
+            valor_manual_pessoa2 = update_data.get('valor_manual_pessoa2', current_item.get('valor_manual_pessoa2'))
+            comecar_mes_atual = update_data.get('comecar_mes_atual', current_item.get('comecar_mes_atual', False))
+            
+            # Gera novas parcelas
+            from utils import generate_monthly_installments
+            parcelas_mensais = generate_monthly_installments(
+                valor_total=valor,
+                parcelas=parcelas,
+                percentual_pessoa1=percentual_pessoa1,
+                percentual_pessoa2=percentual_pessoa2,
+                comecar_mes_atual=comecar_mes_atual,
+                conta_fixa=conta_fixa,
+                valor_manual_pessoa1=valor_manual_pessoa1,
+                valor_manual_pessoa2=valor_manual_pessoa2
+            )
+            
+            # Converte para formato de dicionário
+            parcelas_mensais_dict = [
+                {
+                    'mes': p.mes,
+                    'valor_pessoa1': p.valor_pessoa1,
+                    'valor_pessoa2': p.valor_pessoa2,
+                    'pago_pessoa1': p.pago_pessoa1,
+                    'pago_pessoa2': p.pago_pessoa2
+                } for p in parcelas_mensais
             ]
             update_data['parcelas_mensais'] = parcelas_mensais_dict
         
@@ -358,7 +410,7 @@ async def update_payment_item(
             pago_pessoa1=updated_item.get('pago_pessoa1', False),
             pago_pessoa2=updated_item.get('pago_pessoa2', False),
             parcelas_mensais=parcelas_mensais,
-            comecar_mes_atual=updated_item.get('comecar_mes_atual', True)
+            comecar_mes_atual=updated_item.get('comecar_mes_atual', False)
         )
         
         logger.info(f"Item de pagamento atualizado: {item_id}")

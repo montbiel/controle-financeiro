@@ -137,7 +137,7 @@ def calculate_monthly_payments(items: List[Dict[str, Any]]) -> PaymentSummary:
             pago_pessoa1=item.get('pago_pessoa1', False),
             pago_pessoa2=item.get('pago_pessoa2', False),
             parcelas_mensais=parcelas_mensais,
-            comecar_mes_atual=item.get('comecar_mes_atual', True)
+            comecar_mes_atual=item.get('comecar_mes_atual', False)
         )
         payment_items.append(payment_item)
     
@@ -179,7 +179,7 @@ def generate_monthly_installments(
     parcelas: int, 
     percentual_pessoa1: float, 
     percentual_pessoa2: float,
-    comecar_mes_atual: bool = True,
+    comecar_mes_atual: bool = False,
     conta_fixa: bool = False,
     valor_manual_pessoa1: float = None,
     valor_manual_pessoa2: float = None

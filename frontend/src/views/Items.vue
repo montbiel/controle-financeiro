@@ -421,7 +421,7 @@ export default {
         conta_fixa: false,
         valor_manual_pessoa1: null,
         valor_manual_pessoa2: null,
-        comecar_mes_atual: true
+        comecar_mes_atual: false
       }
     }
   },
@@ -510,7 +510,8 @@ export default {
           percentual_pessoa2: parseFloat(this.form.percentual_pessoa2),
           conta_fixa: this.form.conta_fixa,
           valor_manual_pessoa1: this.form.valor_manual_pessoa1 ? parseFloat(this.form.valor_manual_pessoa1) : null,
-          valor_manual_pessoa2: this.form.valor_manual_pessoa2 ? parseFloat(this.form.valor_manual_pessoa2) : null
+          valor_manual_pessoa2: this.form.valor_manual_pessoa2 ? parseFloat(this.form.valor_manual_pessoa2) : null,
+          comecar_mes_atual: this.form.comecar_mes_atual
         }
 
         if (this.isEditing) {
@@ -542,7 +543,7 @@ export default {
         conta_fixa: item.conta_fixa || false,
         valor_manual_pessoa1: item.valor_manual_pessoa1 || null,
         valor_manual_pessoa2: item.valor_manual_pessoa2 || null,
-        comecar_mes_atual: item.comecar_mes_atual !== undefined ? item.comecar_mes_atual : true
+        comecar_mes_atual: item.comecar_mes_atual !== undefined ? item.comecar_mes_atual : false
       }
       this.showEditModal = true
     },
@@ -578,7 +579,7 @@ export default {
         conta_fixa: false,
         valor_manual_pessoa1: null,
         valor_manual_pessoa2: null,
-        comecar_mes_atual: true
+        comecar_mes_atual: false
       }
     },
     formatCurrency(value) {
