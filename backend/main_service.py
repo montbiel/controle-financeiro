@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="Sistema de Controle de Pagamentos",
     description="API para controle de pagamentos mensais com integração ao Google Sheets",
-    version="1.0.0"
+    version="1.1.0"
 )
 
 # Configurar CORS
@@ -65,7 +65,7 @@ async def root():
     """Endpoint raiz"""
     return {
         "message": "Sistema de Controle de Pagamentos",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "status": "online"
     }
 

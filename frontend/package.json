@@ -1,6 +1,6 @@
 {
   "name": "controle-pagamentos-frontend",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Frontend para Sistema de Controle de Pagamentos",
   "scripts": {
     "serve": "vue-cli-service serve",
